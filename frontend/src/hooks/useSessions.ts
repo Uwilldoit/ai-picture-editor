@@ -65,6 +65,14 @@ export function usePatchSession(id: string) {
   })
 }
 
+export function useAddSessionAsset(id: string) {
+  const cache = useCacheSession(id)
+  return useMutation({
+    mutationFn: (assetId: string) => sessionsApi.addAsset(id, assetId),
+    onSuccess: cache,
+  })
+}
+
 export function useExportPack(id: string) {
   return useMutation({
     mutationFn: (assetIds: string[]) => sessionsApi.export(id, assetIds),

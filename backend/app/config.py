@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     )
 
     app_env: str = "development"
-    api_port: int = 7302
+    api_port: int = 7333
 
     database_url: str = "postgresql+asyncpg://retouch:retouch_dev@localhost:7311/retouch"
     redis_url: str = "redis://localhost:7312"

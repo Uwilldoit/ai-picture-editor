@@ -12,11 +12,11 @@ export default defineConfig({
   server: {
     // 显式绑定 IPv4 回环，否则 Vite 只监听 ::1，127.0.0.1 直连会被拒绝
     host: '127.0.0.1',
-    port: 7301,
+    port: 7401,
     strictPort: true,
     proxy: {
-      '/api': { target: 'http://localhost:7302', changeOrigin: true },
-      '/events': { target: 'http://localhost:7302', changeOrigin: true },
+      '/api': { target: 'http://localhost:7333', changeOrigin: true },
+      '/events': { target: 'http://localhost:7333', changeOrigin: true },
     },
   },
 })

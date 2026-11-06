@@ -16,6 +16,7 @@ from app.schemas.session import (
     HistoryOut,
     SelectIn,
     SelectionOut,
+    SessionAssetIn,
     SessionCreateIn,
     SessionDetailOut,
     SessionOut,
@@ -106,6 +107,17 @@ async def patch_session(
         asset = await _asset(session, user, payload.current_asset_id)
         record = await sessions.switch_current(session, record, asset)
 
+    return await _detail(session, record)
+
+
+@router.post("/{session_id}/assets", status_code=status.HTTP_201_CREATED)
+async def add_session_asset(
+    session_id: uuid.UUID, payload: SessionAssetIn, user: CurrentUser, session: SessionDep
+) -> SessionDetailOut:
+    """把一张已属当前用户的素材挂进图片墙，供后续置入画布。幂等，不改当前画布。"""
+    record = await _load(session, user, session_id)
+    asset = await _asset(session, user, payload.asset_id)
+    await sessions.attach_asset(session, record, asset)
     return await _detail(session, record)
 
 

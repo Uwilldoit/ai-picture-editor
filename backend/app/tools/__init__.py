@@ -17,6 +17,7 @@ from app.tools.enhance import EXPAND_CANVAS, REPLACE_BACKGROUND, UPSCALE_IMAGE
 from app.tools.generate import GENERATE_IMAGE
 from app.tools.layers import PROMOTE_OBJECT, SPLIT_LAYERS
 from app.tools.marketing import GENERATE_MARKETING, PREPARE_DELIVERY_SIZES
+from app.tools.place import PLACE_IMAGE
 from app.tools.region import ERASE_REGION, REPLACE_REGION
 from app.tools.retouch import ADJUST_IMAGE, REMOVE_BACKGROUND
 
@@ -31,6 +32,7 @@ SPECS: tuple[ToolSpec, ...] = (
     REPLACE_REGION,
     SPLIT_LAYERS,
     PROMOTE_OBJECT,
+    PLACE_IMAGE,
     GENERATE_MARKETING,
     PREPARE_DELIVERY_SIZES,
     BATCH_PROCESS,

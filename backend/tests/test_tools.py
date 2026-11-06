@@ -452,6 +452,70 @@ async def test_move_layer_shifts_position(signed_in: httpx.AsyncClient):
     assert (transform["x"], transform["y"]) == (18, -6)
 
 
+async def test_insert_image_appends_a_centered_layer(signed_in: httpx.AsyncClient):
+    session = await open_session(signed_in)  # 画布 320×240（4:3）
+    overlay = await upload(signed_in, (160, 160))  # 比画布小 → 放大到含式
+
+    body = await apply(signed_in, session["id"], "insert_image", {"asset_id": overlay})
+
+    doc = body["document"]
+    assert [layer["asset_id"] for layer in doc["layers"]] == [
+        session["current_asset_id"],
+        overlay,
+    ]
+    assert (doc["width"], doc["height"]) == (320, 240)  # 画布不变
+    placed = doc["layers"][1]
+    assert placed["kind"] == "image"
+    # 含式放缩：160×160 进 320×240，以高为基准放大 1.5 倍 → 240×240，水平居中
+    assert (placed["width"], placed["height"]) == (240, 240)
+    assert placed["transform"] == {"x": 40, "y": 0, "scale_x": 1.5, "scale_y": 1.5, "rotation": 0}
+    assert body["revision"] == 2
+    assert body["can_undo"] is True
+    assert overlay in [asset["id"] for asset in body["assets"]]
+
+
+async def test_insert_larger_image_expands_canvas(signed_in: httpx.AsyncClient):
+    session = await open_session(signed_in)  # 画布 320×240
+    overlay = await upload(signed_in, (640, 480))  # 比画布大一倍 → 自动扩画布
+
+    body = await apply(signed_in, session["id"], "insert_image", {"asset_id": overlay})
+
+    doc = body["document"]
+    # 画布拉到 640×480 容纳图片；图片按原始 1:1 尺寸铺满，居中
+    assert (doc["width"], doc["height"]) == (640, 480)
+    placed = doc["layers"][1]
+    assert (placed["width"], placed["height"]) == (640, 480)
+    assert placed["transform"] == {"x": 0, "y": 0, "scale_x": 1, "scale_y": 1, "rotation": 0}
+    # 已有底图（320×240）向中心平移，保持相对新画布居中
+    base = doc["layers"][0]
+    assert base["id"] == "base"
+    assert (base["transform"]["x"], base["transform"]["y"]) == (160, 120)
+
+
+async def test_insert_current_image_is_a_noop(signed_in: httpx.AsyncClient):
+    session = await open_session(signed_in)
+
+    body = await apply(
+        signed_in, session["id"], "insert_image", {"asset_id": session["current_asset_id"]}
+    )
+
+    assert len(body["document"]["layers"]) == 1
+    assert body["revision"] == 1
+
+
+async def test_insert_foreign_asset_is_refused(signed_in: httpx.AsyncClient):
+    session = await open_session(signed_in)
+
+    body = await invoke(signed_in, session["id"], "insert_image", {"asset_id": str(uuid.uuid4())})
+    await run_tool({}, uuid.UUID(body["run"]["id"]))
+
+    response = await signed_in.get(f"/api/runs/{body['run']['id']}")
+    run = response.json()
+
+    assert run["status"] == "failed"
+    assert "素材不存在" in (run["error"] or "")
+
+
 @pytest.mark.parametrize(
     ("tool", "params"),
     [

@@ -77,7 +77,6 @@ export type ToolInvoke = {
   run: Run
   session: SessionDetail
 }
-
 export const ACTION_LABELS: Record<string, string> = {
   create_session: '新建会话',
   switch_current: '切换当前图',
@@ -100,6 +99,7 @@ export const ACTION_LABELS: Record<string, string> = {
   move_layer: '移动',
   split_layers: '拆层',
   promote_object_to_layer: '提升为图层',
+  insert_image: '置入图片',
   generate_marketing: '营销图',
   prepare_delivery_sizes: '投放尺寸',
 }
@@ -131,6 +131,8 @@ export const sessionsApi = {
   get: (id: string) => api.get<SessionDetail>(`/sessions/${id}`),
   patch: (id: string, input: SessionPatchInput) =>
     api.patch<SessionDetail>(`/sessions/${id}`, input),
+  addAsset: (id: string, assetId: string) =>
+    api.post<SessionDetail>(`/sessions/${id}/assets`, { asset_id: assetId }),
   history: (id: string) => api.get<HistoryEntry[]>(`/sessions/${id}/history`),
   invoke: (id: string, tool: string, params: Record<string, unknown> = {}) =>
     api.post<ToolInvoke>(`/sessions/${id}/tools`, { tool, params }),

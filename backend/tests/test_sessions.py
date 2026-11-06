@@ -118,6 +118,54 @@ async def test_unknown_asset_is_rejected(signed_in: httpx.AsyncClient):
     assert response.status_code == 404
 
 
+async def test_add_asset_links_an_external_image_to_the_wall(signed_in: httpx.AsyncClient):
+    body = await open_session(signed_in)
+    external = await upload(signed_in, (512, 384))
+    assert external not in [asset["id"] for asset in body["assets"]]
+
+    response = await signed_in.post(
+        f"/api/sessions/{body['id']}/assets", json={"asset_id": external}
+    )
+
+    assert response.status_code == 201, response.text
+    assert [asset["id"] for asset in response.json()["assets"]] == [
+        body["current_asset_id"],
+        external,
+    ]
+
+
+async def test_add_asset_is_idempotent_and_keeps_canvas(signed_in: httpx.AsyncClient):
+    body = await open_session(signed_in)
+    external = await upload(signed_in)
+    document_before = body["document"]
+
+    await signed_in.post(f"/api/sessions/{body['id']}/assets", json={"asset_id": external})
+    response = await signed_in.post(
+        f"/api/sessions/{body['id']}/assets", json={"asset_id": external}
+    )
+
+    assert response.status_code == 201
+    updated = response.json()
+    assert [asset["id"] for asset in updated["assets"]].count(external) == 1
+    assert updated["document"] == document_before
+    assert updated["revision"] == body["revision"]
+
+
+async def test_add_asset_requires_ownership(client: httpx.AsyncClient, credentials, other_credentials):
+    await client.post("/api/auth/register", json=credentials)
+    body = await open_session(client)
+
+    await client.post("/api/auth/logout")
+    await client.post("/api/auth/register", json=other_credentials)
+
+    external = await upload(client)
+    response = await client.post(
+        f"/api/sessions/{body['id']}/assets", json={"asset_id": external}
+    )
+
+    assert response.status_code == 404
+
+
 async def test_session_requires_authentication(client: httpx.AsyncClient):
     assert (await client.get("/api/sessions")).status_code == 401
     assert (await client.get(f"/api/sessions/{uuid.uuid4()}")).status_code == 401

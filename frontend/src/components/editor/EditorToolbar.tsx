@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import AddImageModal from '@/components/editor/AddImageModal'
 import type { SessionDetail } from '@/api/sessions'
 import Button from '@/components/ui/Button'
 import { buttonClass } from '@/components/ui/buttonStyles'
@@ -23,17 +24,20 @@ export default function EditorToolbar({
   tools,
   picking,
   onRename,
+  onAddAsset,
 }: {
   session: SessionDetail
   tools: SessionTools
   picking: SessionSelection
   onRename: (title: string) => void
+  onAddAsset: (assetId: string) => void
 }) {
   const scale = useCanvasView((state) => state.scale)
   const fit = useCanvasView((state) => state.fit)
   const stepZoom = useCanvasView((state) => state.stepZoom)
   const zoomTo = useCanvasView((state) => state.zoomTo)
   const ui = useEditorUi()
+  const [addOpen, setAddOpen] = useState(false)
 
   // 只有发起的那个按钮显示百分比，其余按钮照常禁用
   const running = (tool: string, match?: (params: Record<string, unknown>) => boolean) =>
@@ -144,6 +148,13 @@ export default function EditorToolbar({
           </>
         ) : (
           <>
+            <Button
+              variant="solid"
+              title="上传或从历史素材选一张，叠加为可拖动的独立图层"
+              onClick={() => setAddOpen(true)}
+            >
+              添加图片
+            </Button>
             <Button
               disabled={tools.busy}
               active={ui.cropOpen}
@@ -323,6 +334,15 @@ export default function EditorToolbar({
           图层
         </Button>
       </div>
+
+      <AddImageModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onPick={(assetId) => {
+          setAddOpen(false)
+          onAddAsset(assetId)
+        }}
+      />
     </header>
   )
 }

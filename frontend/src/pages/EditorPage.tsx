@@ -11,7 +11,7 @@ import ProgressBar from '@/components/ui/ProgressBar'
 import { buttonClass } from '@/components/ui/buttonStyles'
 import { useMountTransition } from '@/hooks/useMountTransition'
 import { useSelection } from '@/hooks/useSelection'
-import { usePatchSession, useSession, useSessionTools } from '@/hooks/useSessions'
+import { useAddSessionAsset, usePatchSession, useSession, useSessionTools } from '@/hooks/useSessions'
 import { ZOOM_STEP, useCanvasView } from '@/stores/canvasView'
 import { useEditorUi } from '@/stores/editorUi'
 
@@ -40,7 +40,19 @@ function Workspace({ sessionId }: { sessionId: string }) {
   const { data: session, isError } = useSession(sessionId)
   const patch = usePatchSession(sessionId)
   const tools = useSessionTools(sessionId)
+  const addAsset = useAddSessionAsset(sessionId)
   const picking = useSelection(sessionId, session?.revision ?? 0)
+
+  // 把新图先挂进图片墙，再置入为可拖动图层；挂墙失败就不往下走
+  const addImage = (assetId: string) => {
+    if (session?.assets.some((asset) => asset.id === assetId)) {
+      tools.invoke('insert_image', { asset_id: assetId })
+      return
+    }
+    addAsset.mutate(assetId, {
+      onSuccess: () => tools.invoke('insert_image', { asset_id: assetId }),
+    })
+  }
 
   const cropOpen = useEditorUi((state) => state.cropOpen)
   const compareOpen = useEditorUi((state) => state.compareOpen)
@@ -142,6 +154,7 @@ function Workspace({ sessionId }: { sessionId: string }) {
           tools={tools}
           picking={picking}
           onRename={(title) => patch.mutate({ title })}
+          onAddAsset={addImage}
         />
         {tools.pending && (
           <ProgressBar value={tools.pendingProgress} tone="brand" className="h-0.5 shrink-0" />
@@ -191,6 +204,7 @@ function Workspace({ sessionId }: { sessionId: string }) {
           currentId={session.current_asset_id}
           disabled={patch.isPending || tools.busy}
           onPick={(current_asset_id) => patch.mutate({ current_asset_id })}
+          onInsert={(asset_id) => tools.invoke('insert_image', { asset_id })}
         />
       </div>
     </>

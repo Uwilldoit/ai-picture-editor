@@ -24,6 +24,10 @@ class SessionPatchIn(BaseModel):
     current_asset_id: uuid.UUID | None = None
 
 
+class SessionAssetIn(BaseModel):
+    asset_id: uuid.UUID
+
+
 class ToolInvokeIn(BaseModel):
     tool: str
     params: dict = {}

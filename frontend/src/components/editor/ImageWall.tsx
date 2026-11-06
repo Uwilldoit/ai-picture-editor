@@ -16,11 +16,13 @@ export default function ImageWall({
   currentId,
   disabled,
   onPick,
+  onInsert,
 }: {
   assets: Asset[]
   currentId: string
   disabled: boolean
   onPick: (assetId: string) => void
+  onInsert?: (assetId: string) => void
 }) {
   return (
     <div className="border-line bg-paper shrink-0 border-t">
@@ -59,6 +61,20 @@ export default function ImageWall({
               <span className="bg-ink/70 absolute right-0 bottom-0 left-0 py-0.5 text-[10px] text-white">
                 {KIND_LABELS[asset.kind]}
               </span>
+              {onInsert && !active && (
+                <span
+                  role="button"
+                  tabIndex={-1}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onInsert(asset.id)
+                  }}
+                  title="置入为图层（保留当前画布，叠加一张可拖动的新图层；图比画布大会自动扩画布）"
+                  className="border-brand/30 bg-paper/90 absolute top-0 right-0 hidden h-5 w-5 cursor-pointer items-center justify-center rounded-br-chip text-[11px] leading-none text-ink shadow-control group-hover:flex"
+                >
+                  +
+                </span>
+              )}
             </button>
           )
         })}

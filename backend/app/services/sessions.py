@@ -1,3 +1,4 @@
+import json
 import uuid
 from collections.abc import Iterable
 
@@ -10,6 +11,11 @@ from app.models.edit_history import HISTORY_LIMIT
 
 TITLE_LIMIT = 80
 DEFAULT_TITLE = "未命名会话"
+
+
+def _json_safe(value: dict) -> dict:
+    """把参数/结果里的 UUID、datetime 等转成可写 JSONB 的 str 形式。"""
+    return json.loads(json.dumps(value, default=str))
 
 
 class SessionNotFound(Exception):
@@ -158,13 +164,15 @@ async def apply_edit(
         session,
         record,
         action,
-        {**(params or {}), "before": before},
-        {
-            **(result or {}),
-            "document": record.document,
-            "current_asset_id": str(record.current_asset_id),
-            "revision": record.revision,
-        },
+        _json_safe({**(params or {}), "before": before}),
+        _json_safe(
+            {
+                **(result or {}),
+                "document": record.document,
+                "current_asset_id": str(record.current_asset_id),
+                "revision": record.revision,
+            }
+        ),
     )
     await session.commit()
     await session.refresh(record)
@@ -242,6 +250,14 @@ async def assets_of(session: AsyncSession, record: EditSession) -> list[Asset]:
         .order_by(SessionAsset.position)
     )
     return list(result)
+
+
+async def attach_asset(session: AsyncSession, record: EditSession, asset: Asset) -> bool:
+    """把已属当前用户的素材挂进图片墙。幂等：已在墙上返回 False。"""
+    added = await _attach(session, record, [asset])
+    await session.commit()
+    await session.refresh(record)
+    return added > 0
 
 
 async def history_of(session: AsyncSession, record: EditSession) -> list[EditHistory]:

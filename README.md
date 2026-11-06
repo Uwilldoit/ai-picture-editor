@@ -153,6 +153,82 @@ Python 全栈 + LangChain / LangGraph Agent + 专业画布编辑器 + 异步任�
 - Node.js >= 18（推荐 20+）
 - 一个 [阿里云百炼 API Key](https://bailian.console.aliyun.com/)（🔧 可选，用于 AI 文生图、图像编辑和 Agent 对话）
 
+### Windows 本地运行
+
+在 Windows 上跑通全流程，链路是：**Docker 起中间件 → 后端 API + ARQ Worker（两个终端）→ 前端 dev server**。默认 `IMAGE_PROVIDER=mock`，**不花钱、不需要 API Key** 即可跑通；要接真实模型再改成 `dashscope`。
+
+**0. 装工具（一次性）**：Docker Desktop（含 Compose）、Python 3.13、Node.js 20+，以及 uv（PowerShell 执行 `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"`）。
+
+**1. 启动中间件**（仓库根目录）：
+
+```powershell
+cd D:\code\ai-picture-editor
+docker compose up -d
+```
+
+起 Postgres(7311)、Redis(7312)、MinIO(7313/7314)，等 healthcheck 变 `healthy` 再继续。
+
+**2. 配置环境变量**（`config.py` 读的是**仓库根目录**的 `.env`，`backend/` 里没有）：
+
+```powershell
+copy .env.example .env
+```
+
+保持默认即可；接真实模型时把 `IMAGE_PROVIDER` 改成 `dashscope` 并填 `DASHSCOPE_API_KEY`。
+
+**3. 安装后端依赖**：
+
+```powershell
+cd backend
+uv sync --all-extras
+```
+
+`--all-extras` 带上 `cv`（rembg/opencv/OCR）和 `agent`（LangChain/LangGraph）两套；国内网络可加 `--index-url https://pypi.tuna.tsinghua.edu.cn/simple`。
+
+**4. 初始化数据库**：
+
+```powershell
+uv run alembic upgrade head
+```
+
+**5. 启动后端 API + Worker**（两个终端都留在 `backend/` 目录）：
+
+```powershell
+# 终端一：API
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 7302
+
+# 终端二：异步 Worker
+uv run arq app.worker.WorkerSettings
+```
+
+两个都要开着——API 受理请求，Worker 真正跑完耗时任务（进度经 Redis→SSE 推回前端）。浏览器打开 [http://localhost:7302/api/health](http://localhost:7302/api/health)，三个字段都是 `ok` 即正常。
+
+**6. 启动前端**（新开终端）：
+
+```powershell
+cd D:\code\ai-picture-editor\frontend
+npm install
+npm run dev
+```
+
+浏览器打开 [http://localhost:7301](http://localhost:7301)。前端的 `/api`、`/events` 走 Vite 代理到 `:7302`，同源，无需配跨域。
+
+**7.（可选）运行测试**：
+
+```powershell
+cd backend
+uv run pytest
+```
+
+测试用 mock 隔离了大模型，不消耗额度。
+
+**Windows 常见坑**
+
+- 下文「启动后端」里的 `cp .env.example .env` 是 Unix 命令，Windows 用 `copy`（或 PowerShell `Copy-Item`）。
+- 端口 7301/7302/7311/7312/7313/7314 确认没被占用；Docker Desktop 首次启动较慢。
+- 后端和 Worker **必须同时运行**，否则点任何 AI 工具都会卡在 `queued`（队列没人消费）。
+- 全程 `mock` 可验证前后端链路；只有想真实 AI 出图才需要 `dashscope` + API Key。
+
 ### 1. 克隆项目
 
 ```bash
