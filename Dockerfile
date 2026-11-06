@@ -4,8 +4,8 @@ WORKDIR /build
 ENV NPM_CONFIG_REGISTRY=https://registry.npmmirror.com
 
 COPY frontend/package*.json ./
-# --omit=optional：跳过平台专属可选二进制包，根治 npm ci 平台报错
-RUN npm ci --omit=optional
+# 这里换成 npm install，它遇到平台不兼容的optional包只会警告，不会终止构建
+RUN npm install
 COPY frontend/ ./
 RUN npm run build
 
@@ -31,7 +31,7 @@ COPY backend/pyproject.toml backend/uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --all-extras --no-dev --no-install-project
 
-# 拷贝后端源码，再安装项目本身（代码改动不会重下依赖包）
+# 拷贝后端源码，再安装项目本身
 COPY backend/ ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --all-extras --no-dev
@@ -41,4 +41,4 @@ COPY --from=frontend /build/dist /app/frontend/dist
 
 ENV PATH="/app/backend/.venv/bin:$PATH"
 
-EXPOSE 7302
+EXPOSE 7333
