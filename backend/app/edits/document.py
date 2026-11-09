@@ -197,9 +197,33 @@ def _as_pixels(
     return left, top, max(0, right - left), max(0, bottom - top)
 
 
+def expand(
+    document: LayerDocument,
+    *,
+    width: int,
+    height: int,
+) -> LayerDocument:
+    """把画布改到指定像素：已有图层向中心平移保持相对居中，多出的区域留白。
+
+    放大、缩小都可以（缩小=加白边，像素不裁不拉），与 `crop`（裁切画布）不同。
+    """
+    new_w = int(width)
+    new_h = int(height)
+    dx = (new_w - document.width) / 2
+    dy = (new_h - document.height) / 2
+    doc = document.model_copy(deep=True)
+    for layer in doc.layers:
+        layer.transform.x += dx
+        layer.transform.y += dy
+    doc.width = new_w
+    doc.height = new_h
+    return doc
+
+
 __all__ = [
     "EditError",
     "crop",
+    "expand",
     "flip",
     "move",
     "reorder",

@@ -77,13 +77,26 @@ export function BackgroundForm({
 export function ExpandForm({
   disabled,
   wallOnly,
+  canvasSize,
   onApply,
+  onExpandToSize,
 }: {
   disabled: boolean
   wallOnly: boolean
+  canvasSize: { width: number; height: number }
   onApply: (params: { ratio: Ratio }) => void
+  onExpandToSize: (width: number, height: number) => void
 }) {
   const [ratio, setRatio] = useState<Ratio>('16:9')
+  const [width, setWidth] = useState(String(canvasSize.width))
+  const [height, setHeight] = useState(String(canvasSize.height))
+
+  const sizeValid = /^\d+$/.test(width) && /^\d+$/.test(height)
+  const w = Number(width)
+  const h = Number(height)
+  // 放大、缩小都可以（32–4096 像素内），只要跟当前画布不同就允许
+  const canApply =
+    sizeValid && w >= 32 && w <= 4096 && h >= 32 && h <= 4096 && (w !== canvasSize.width || h !== canvasSize.height)
 
   return (
     <section className="border-line border-b px-4 py-4">
@@ -117,6 +130,45 @@ export function ExpandForm({
       >
         扩展
       </Button>
+
+      <div className="border-line mt-4 border-t pt-4">
+        <h3 className="text-ink mb-2 text-xs font-medium">或改到指定尺寸（拉白边，不调 AI）</h3>
+        <div className="flex items-center gap-1.5">
+          <input
+            type="number"
+            min={32}
+            max={4096}
+            value={width}
+            disabled={disabled}
+            onChange={(event) => setWidth(event.target.value)}
+            aria-label="目标宽"
+            className="text-ink border-line focus:border-line-strong w-full rounded-control border px-2 py-1.5 text-xs outline-none"
+          />
+          <span className="text-faint text-xs">×</span>
+          <input
+            type="number"
+            min={32}
+            max={4096}
+            value={height}
+            disabled={disabled}
+            onChange={(event) => setHeight(event.target.value)}
+            aria-label="目标高"
+            className="text-ink border-line focus:border-line-strong w-full rounded-control border px-2 py-1.5 text-xs outline-none"
+          />
+        </div>
+        <p className="text-faint mt-1.5 text-[11px]">
+          当前画布 {canvasSize.width}×{canvasSize.height}；可放大或缩小，多出的区域留白，像素不拉伸、不裁切。
+        </p>
+        <Button
+          variant="solid"
+          block
+          className="mt-3"
+          disabled={disabled || !canApply}
+          onClick={() => onExpandToSize(w, h)}
+        >
+          改到此尺寸
+        </Button>
+      </div>
     </section>
   )
 }

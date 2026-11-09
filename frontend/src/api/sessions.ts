@@ -83,6 +83,7 @@ export const ACTION_LABELS: Record<string, string> = {
   generate_image: '生成图片',
   replace_background: '换背景',
   expand_canvas: '扩图',
+  expand_to_size: '扩到指定尺寸',
   upscale_image: '超分',
   remove_background: '去背景',
   adjust_image: '调色',

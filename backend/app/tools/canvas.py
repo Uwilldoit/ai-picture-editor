@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.edits.document import (
     EditError,
     crop,
+    expand,
     flip,
     move,
     reorder,
@@ -110,6 +111,16 @@ class CropIn(BaseModel):
         if (self.ratio is None) == (self.rect is None):
             raise ValueError("裁剪需要比例或裁剪框之一")
         return self
+
+
+class ExpandSizeIn(BaseModel):
+    """纯几何改画幅：把画布改成指定像素，已有图层向中心平移、多出的区域留白，不调用生成模型。
+
+    放大、缩小都可以；缩小是加白边（像素不裁、不拉），与 `crop`（裁切画布）不同。
+    """
+
+    width: int = Field(ge=32, le=4096)
+    height: int = Field(ge=32, le=4096)
 
 
 async def _apply(session: AsyncSession, run: ToolRun, mutate) -> dict:
@@ -221,6 +232,14 @@ async def crop_canvas(session: AsyncSession, run: ToolRun) -> dict:
     return await _apply(session, run, mutate)
 
 
+async def expand_to_size(session: AsyncSession, run: ToolRun) -> dict:
+    return await _apply(
+        session,
+        run,
+        lambda doc, params: expand(doc, width=params["width"], height=params["height"]),
+    )
+
+
 def _canvas(
     name: str,
     label: str,
@@ -249,6 +268,13 @@ CROP_CANVAS = _canvas(
     "按比例或归一化矩形裁切画布。只改图层文档，不调用生成模型。",
     CropIn,
     crop_canvas,
+)
+EXPAND_TO_SIZE = _canvas(
+    "expand_to_size",
+    "扩到指定尺寸",
+    "把画布改到指定像素（宽、高），已有图层向中心平移，多出的区域留白。放大、缩小都可以，不调用生成模型。",
+    ExpandSizeIn,
+    expand_to_size,
 )
 FLIP_LAYER = _canvas(
     "flip_layer",

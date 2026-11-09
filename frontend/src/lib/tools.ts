@@ -15,6 +15,7 @@ const UNDOABLE = new Set([
   'replace_region',
   'adjust_image',
   'crop_canvas',
+  'expand_to_size',
   'flip_layer',
   'insert_image',
 ])

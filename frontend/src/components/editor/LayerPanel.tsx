@@ -73,7 +73,9 @@ export default function LayerPanel({
         <ExpandForm
           disabled={tools.busy}
           wallOnly={onlyToWall}
+          canvasSize={{ width: session.document.width, height: session.document.height }}
           onApply={(params) => tools.invoke('expand_canvas', params)}
+          onExpandToSize={(width, height) => tools.invoke('expand_to_size', { width, height })}
         />
       )}
       {panel === 'replace' && (

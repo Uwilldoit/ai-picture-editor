@@ -269,6 +269,62 @@ async def test_expanding_a_split_canvas_only_fills_the_wall(signed_in: httpx.Asy
     assert entries[0]["action"] == "expand_canvas"
 
 
+async def test_expand_to_size_grows_canvas_with_whitespace(signed_in: httpx.AsyncClient):
+    """纯几何拉白边：画布拉到 640×640，底图向中心平移，像素不拉伸。"""
+    session = await open_session(signed_in)  # 画布 320×240（4:3）
+    revision_before = session["revision"]
+
+    body = await invoke(signed_in, session["id"], "expand_to_size", {"width": 640, "height": 640})
+
+    assert body["run"]["status"] == "succeeded", body
+    doc = body["session"]["document"]
+    assert (doc["width"], doc["height"]) == (640, 640)
+    [base] = [l for l in doc["layers"] if l["id"] == "base"]
+    # 320×240 → 640×640：dx=(640-320)/2=160，dy=(640-240)/2=200
+    assert (base["transform"]["x"], base["transform"]["y"]) == (160, 200)
+    assert (base["transform"]["scale_x"], base["transform"]["scale_y"]) == (1.0, 1.0)
+    # canvas 工具改文档：revision 递增、可撤销
+    assert body["session"]["revision"] == revision_before + 1
+    assert body["session"]["can_undo"] is True
+
+
+async def test_expand_to_size_smaller_is_noop(signed_in: httpx.AsyncClient):
+    """目标等于当前画布时不变（幂等）。"""
+    session = await open_session(signed_in)  # 320×240
+    before = session["document"]
+
+    body = await invoke(signed_in, session["id"], "expand_to_size", {"width": 320, "height": 240})
+
+    assert body["session"]["document"] == before
+
+
+async def test_expand_to_size_shrinks_canvas_with_whitespace(signed_in: httpx.AsyncClient):
+    """画布改小：同样居中留白，原图保持像素大小、不裁不拉。"""
+    session = await open_session(signed_in)  # 320×240（4:3）
+
+    body = await invoke(signed_in, session["id"], "expand_to_size", {"width": 160, "height": 120})
+
+    doc = body["session"]["document"]
+    assert (doc["width"], doc["height"]) == (160, 120)
+    [base] = [l for l in doc["layers"] if l["id"] == "base"]
+    # 320×240 → 160×120：dx=(160-320)/2=-80，dy=(120-240)/2=-60
+    assert (base["transform"]["x"], base["transform"]["y"]) == (-80, -60)
+    assert (base["transform"]["scale_x"], base["transform"]["scale_y"]) == (1.0, 1.0)
+    assert body["session"]["revision"] == session["revision"] + 1
+
+
+async def test_expand_to_size_rejects_tiny_size(signed_in: httpx.AsyncClient):
+    """宽或高 <32 时在请求层被拒（InvalidParams → 422），不会生成任务。"""
+    session = await open_session(signed_in)
+
+    response = await signed_in.post(
+        f"/api/sessions/{session['id']}/tools",
+        json={"tool": "expand_to_size", "params": {"width": 10, "height": 100}},
+    )
+
+    assert response.status_code == 422
+
+
 async def test_upscale_image_raises_resolution(signed_in: httpx.AsyncClient):
     session = await open_session(signed_in)
     body = await invoke(signed_in, session["id"], "upscale_image", {"scale": 2})
